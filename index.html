@@ -1,0 +1,324 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.app { padding: 1rem 0; max-width: 680px; margin: 0 auto; }
+.top-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+.topic-btn { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s; }
+.topic-btn.active { background: var(--color-background-secondary); color: var(--color-text-primary); border-color: var(--color-border-primary); font-weight: 500; }
+.progress-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem; font-size: 13px; color: var(--color-text-secondary); }
+.progress-bar { flex: 1; height: 3px; background: var(--color-border-tertiary); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--color-text-secondary); border-radius: 2px; transition: width 0.3s; }
+.card-wrap { perspective: 1000px; height: 280px; margin-bottom: 1rem; cursor: pointer; }
+.card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.45s cubic-bezier(.4,0,.2,1); transform-style: preserve-3d; }
+.card-wrap.flipped .card-inner { transform: rotateX(180deg); }
+.card-face { position: absolute; inset: 0; border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; }
+.card-back { transform: rotateX(180deg); }
+.card-tag { font-size: 11px; color: var(--color-text-tertiary); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 1rem; }
+.card-q { font-size: 16px; color: var(--color-text-primary); line-height: 1.6; }
+.card-q .math { font-family: var(--font-mono); font-size: 14px; background: var(--color-background-secondary); padding: 2px 6px; border-radius: 4px; display: inline-block; margin: 2px 0; }
+.card-q .block-math { font-family: var(--font-mono); font-size: 13px; background: var(--color-background-secondary); padding: 8px 14px; border-radius: var(--border-radius-md); display: block; margin: 10px 0; line-height: 1.9; text-align: left; }
+.card-hint { font-size: 12px; color: var(--color-text-tertiary); margin-top: 1rem; }
+.btn-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 1rem; }
+.btn { font-size: 14px; padding: 8px 20px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; transition: all 0.15s; }
+.btn:hover { background: var(--color-background-secondary); }
+.btn:active { transform: scale(0.97); }
+.btn-got-it { border-color: var(--color-border-success); color: var(--color-text-success); }
+.btn-again { border-color: var(--color-border-danger); color: var(--color-text-danger); }
+.nav-row { display: flex; gap: 8px; justify-content: center; align-items: center; }
+.nav-btn { font-size: 13px; padding: 6px 14px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s; }
+.nav-btn:hover { background: var(--color-background-secondary); color: var(--color-text-primary); }
+.counter { font-size: 13px; color: var(--color-text-tertiary); min-width: 60px; text-align: center; }
+.stats-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 0.75rem; }
+.stat-chip { font-size: 12px; padding: 3px 10px; border-radius: 20px; border: 0.5px solid; }
+.chip-known { border-color: var(--color-border-success); color: var(--color-text-success); background: var(--color-background-success); }
+.chip-review { border-color: var(--color-border-danger); color: var(--color-text-danger); background: var(--color-background-danger); }
+.chip-unseen { border-color: var(--color-border-tertiary); color: var(--color-text-secondary); }
+.done-screen { text-align: center; padding: 3rem 2rem; border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); }
+.done-screen h2 { font-size: 18px; font-weight: 500; margin-bottom: 0.5rem; color: var(--color-text-primary); }
+.done-screen p { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
+</style>
+
+<div class="app">
+<div class="top-bar">
+  <span style="font-size:13px;color:var(--color-text-secondary);margin-right:4px;">Topic:</span>
+  <button class="topic-btn active" onclick="setTopic('all')">All</button>
+  <button class="topic-btn" onclick="setTopic('ito1')">Itô I</button>
+  <button class="topic-btn" onclick="setTopic('ito2')">Itô II</button>
+  <button class="topic-btn" onclick="setTopic('sde')">SDEs</button>
+  <button class="topic-btn" onclick="setTopic('bs')">Black-Scholes</button>
+  <button class="topic-btn" onclick="setTopic('review')" id="review-btn">Review only</button>
+</div>
+
+<div class="progress-row">
+  <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+  <span id="prog-label">0%</span>
+</div>
+
+<div class="stats-row">
+  <span class="stat-chip chip-known" id="chip-known">✓ 0 known</span>
+  <span class="stat-chip chip-review" id="chip-review">↻ 0 review</span>
+  <span class="stat-chip chip-unseen" id="chip-unseen">— 0 unseen</span>
+</div>
+
+<div id="main-area">
+  <div class="card-wrap" id="card" onclick="flip()">
+    <div class="card-inner" id="card-inner">
+      <div class="card-face card-front">
+        <div class="card-tag" id="card-tag"></div>
+        <div class="card-q" id="card-q"></div>
+        <div class="card-hint">tap to reveal</div>
+      </div>
+      <div class="card-face card-back">
+        <div class="card-tag" id="card-tag-b"></div>
+        <div class="card-q" id="card-a"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row" id="grade-row" style="display:none">
+    <button class="btn btn-again" onclick="grade(false)">↻ Again</button>
+    <button class="btn btn-got-it" onclick="grade(true)">✓ Got it</button>
+  </div>
+
+  <div class="nav-row">
+    <button class="nav-btn" onclick="prev()">← prev</button>
+    <span class="counter" id="counter"></span>
+    <button class="nav-btn" onclick="next()">next →</button>
+    <button class="nav-btn" onclick="shuffle()" style="margin-left:8px">⇄ shuffle</button>
+  </div>
+</div>
+
+<div id="done-area" style="display:none">
+  <div class="done-screen">
+    <h2>Deck complete</h2>
+    <p id="done-msg"></p>
+    <button class="btn" onclick="restart()">Start over</button>
+    <button class="btn btn-again" onclick="reviewOnly()" style="margin-left:8px">Review flagged</button>
+  </div>
+</div>
+</div>
+
+<script>
+const ALL = [
+  {topic:"ito1", tag:"Itô's Formula I — setup",
+   q:"State Itô's Formula I. What are the hypotheses on <span class='math'>f</span>?",
+   a:"<span class='block-math'>f(B_t) - f(B_0) = ∫₀ᵗ f′(B_s) dB_s + ½ ∫₀ᵗ f″(B_s) ds</span>Hypotheses: <span class='math'>f: ℝ→ℝ</span> with <span class='math'>f′, f″</span> existing and continuous. The extra <span class='math'>½∫f″ ds</span> term is the <em>stochastic correction</em>."},
+
+  {topic:"ito1", tag:"Itô's Formula I — proof idea",
+   q:"How does the proof of Itô I proceed? What two sums appear?",
+   a:"Telescope: <span class='block-math'>f(B_t)-f(B_0) = Σ [f(B_{t_i})-f(B_{t_{i-1}})]</span>Taylor each term → sum <span class='math'>U_n</span> (first-order) + <span class='math'>½V_n</span> (second-order). <span class='math'>U_n →∫f′dB</span> in <span class='math'>L²</span>; <span class='math'>V_n →∫f″ds</span>. The key: <span class='math'>(B_{t_i}-B_{t_{i-1}})² → dt</span> in <span class='math'>L²</span>."},
+
+  {topic:"ito1", tag:"Itô I — example: f(x)=x²",
+   q:"Apply Itô I to <span class='math'>f(x) = x²</span>. What identity do you get?",
+   a:"<span class='math'>f′=2x, f″=2</span>. Itô I gives:<span class='block-math'>B_t² - B_0² = ∫₀ᵗ 2B_s dB_s + ½∫₀ᵗ 2 ds</span>Since <span class='math'>B_0=0</span>:<span class='block-math'>∫₀ᵗ B_s dB_s = ½(B_t² - t)</span>Key: Itô integral of <span class='math'>B_s</span> is NOT <span class='math'>½B_t²</span> — must subtract <span class='math'>t/2</span>."},
+
+  {topic:"ito1", tag:"Itô I — example: f(x)=eˣ",
+   q:"Apply Itô I to <span class='math'>f(x)=eˣ</span>. What SDE does <span class='math'>X_t = e^{B_t}</span> satisfy?",
+   a:"<span class='math'>f′=f″=eˣ</span>. Itô I:<span class='block-math'>e^{B_t} - 1 = ∫₀ᵗ e^{B_s} dB_s + ½∫₀ᵗ e^{B_s} ds</span>So <span class='math'>X_t = e^{B_t}</span> satisfies:<span class='block-math'>dX_t = X_t dB_t + ½X_t dt,  X_0 = 1</span>"},
+
+  {topic:"ito2", tag:"Itô's Formula II — statement",
+   q:"State Itô's Formula II for <span class='math'>f(t,B_t)</span>.",
+   a:"If <span class='math'>f: ℝ₊×ℝ→ℝ</span> with <span class='math'>∂f/∂t, ∂f/∂x, ∂²f/∂x²</span> existing and continuous:<span class='block-math'>f(t,B_t)-f(0,B_0) = ∫₀ᵗ (∂f/∂t) ds + ∫₀ᵗ (∂f/∂x) dB_s + ½∫₀ᵗ (∂²f/∂x²) ds</span>Compared to Itô I: adds the <span class='math'>∫(∂f/∂t)ds</span> drift term."},
+
+  {topic:"ito2", tag:"Itô II — example: f(t,x)=e^{x−t/2}",
+   q:"Apply Itô II to <span class='math'>f(t,x)=e^{x-t/2}</span>. What process does <span class='math'>X_t=e^{B_t-t/2}</span> satisfy?",
+   a:"<span class='math'>∂f/∂t = -½e^{x-t/2}</span>, <span class='math'>∂f/∂x = e^{x-t/2}</span>, <span class='math'>∂²f/∂x² = e^{x-t/2}</span>. Itô II:<span class='block-math'>e^{B_t-t/2} - 1 = ∫₀ᵗ (-½X_s)ds + ∫₀ᵗ X_s dB_s + ½∫₀ᵗ X_s ds = ∫₀ᵗ X_s dB_s</span>So <span class='math'>X_t = 1 + ∫₀ᵗ X_s dB_s</span>, i.e. <span class='math'>dX_t = X_t dB_t</span>, <span class='math'>X_0=1</span>. <span class='math'>X_t</span> is a martingale."},
+
+  {topic:"ito2", tag:"Itô Formula III — semi-martingales",
+   q:"State Itô's Formula III (for Itô processes / semi-martingales).",
+   a:"Let <span class='math'>X_t = X_0 + ∫₀ᵗ U_s ds + ∫₀ᵗ V_s dB_s</span> (an Itô process). Then for <span class='math'>f(t,x)</span>:<span class='block-math'>f(t,X_t)-f(0,X_0) = ∫₀ᵗ (∂f/∂t) ds + ∫₀ᵗ (∂f/∂x) U_s ds + ∫₀ᵗ (∂f/∂x) V_s dB_s + ½∫₀ᵗ (∂²f/∂x²) V_s² ds</span>Key: quadratic variation <span class='math'>d⟨M⟩_s = V_s² ds</span> where <span class='math'>M_t = ∫₀ᵗ V_s dB_s</span>."},
+
+  {topic:"ito2", tag:"Quadratic variation of M_t = B_t²−t",
+   q:"Find <span class='math'>⟨M⟩_t</span> where <span class='math'>M_t = B_t² - t</span>.",
+   a:"Apply Itô II to <span class='math'>f(t,x) = (x²-t)²</span> and decompose. Using Itô III:<span class='block-math'>M_t² = (B_t²-t)² = 4∫₀ᵗ B_s(B_s²-s)dB_s + 4∫₀ᵗ B_s² ds</span>The martingale part has integrand <span class='math'>V_s = 4B_s</span>, so<span class='block-math'>⟨M⟩_t = ∫₀ᵗ (2B_s)² ds = 4∫₀ᵗ B_s² ds</span>"},
+
+  {topic:"ito2", tag:"Hermite polynomials via Itô",
+   q:"What is <span class='math'>H_3(B_t, t)</span> and how does Itô's formula produce it?",
+   a:"<span class='math'>H_3(x,t) = x³ - 3tx</span>. Taking <span class='math'>f(t,x) = x³/3 - tx</span> in Itô II:<span class='block-math'>B_t³/3 - tB_t = ∫₀ᵗ (B_s²-s) dB_s</span>So <span class='math'>B_t³ - 3tB_t = 3∫₀ᵗ(B_s²-s)dB_s</span>, which equals <span class='math'>6∫₀ᵗ(∫₀ˢ B_r dB_r)dB_s</span> (iterated Itô integral)."},
+
+  {topic:"sde", tag:"SDE — definition of solution",
+   q:"Define a solution of the SDE <span class='math'>dX_t = a(t,X_t)dt + b(t,X_t)dB_t</span>.",
+   a:"A process <span class='math'>(X_t)_{t∈[0,T]}</span> is a solution if:<span class='block-math'>X_t = X_0 + ∫₀ᵗ a(s,X_s)ds + ∫₀ᵗ b(s,X_s)dB_s</span>provided: <span class='math'>∫₀ᵀ|a(s,X_s)|ds < ∞</span> a.s., <span class='math'>(X_t)</span> is adapted, and <span class='math'>∫₀ᵀ E[b²(s,X_s)]ds < ∞</span> (Itô integrability)."},
+
+  {topic:"sde", tag:"Lipschitz condition",
+   q:"What is the Lipschitz condition on <span class='math'>a(t,·)</span> (in <span class='math'>x</span>)?",
+   a:"There exists <span class='math'>K>0</span> such that:<span class='block-math'>|a(t,x) - a(t,y)| ≤ K|x-y|   ∀x,y∈ℝ, ∀t∈[0,T]</span>The constant <span class='math'>K</span> is the Lipschitz constant. Same condition required for <span class='math'>b(t,·)</span>. Differentiable functions with bounded derivative are Lipschitz."},
+
+  {topic:"sde", tag:"Linear growth condition",
+   q:"What is the linear growth condition on <span class='math'>a(t,x)</span>?",
+   a:"There exists <span class='math'>K>0</span> such that:<span class='block-math'>|a(t,x)| ≤ K(1+|x|)   ∀x∈ℝ, ∀t∈[0,T]</span>Remark: if <span class='math'>a</span> is Lipschitz, it automatically satisfies linear growth (since <span class='math'>|a(t,x)| ≤ |a(t,0)| + K|x|</span>)."},
+
+  {topic:"sde", tag:"Existence & uniqueness theorem",
+   q:"State the existence and uniqueness theorem for SDEs.",
+   a:"If <span class='math'>E[X_0²]<∞</span> and <span class='math'>a, b</span> satisfy both the <em>Lipschitz</em> and <em>linear growth</em> conditions in <span class='math'>x</span>, then <span class='block-math'>dX_t = a(t,X_t)dt + b(t,X_t)dB_t</span> has a <strong>unique</strong> solution. Proof: Picard iterations <span class='math'>X^{(n+1)}_t = X_0 + ∫₀ᵗ a(s,X^{(n)}_s)ds + ∫₀ᵗ b(s,X^{(n)}_s)dB_s</span> converge in <span class='math'>L²(Ω)</span>."},
+
+  {topic:"sde", tag:"Picard iteration / Gronwall",
+   q:"What role does Gronwall's lemma play in the existence proof for SDEs?",
+   a:"Let <span class='math'>f_n(t) = E|X^{(n)}_t - X^{(n-1)}_t|²</span>. Using Lipschitz + Itô isometry:<span class='block-math'>f_{n+1}(t) ≤ C∫₀ᵗ f_n(s)ds</span>Gronwall: if <span class='math'>f_{n+1}(t) ≤ C∫₀ᵗ f_n(s)ds</span> and <span class='math'>f_0(t) ≤ M</span>, then <span class='math'>f_n(t) ≤ M(Ct)^n/n!</span>. Hence <span class='math'>Σ sup_t f_n(t)^{1/2} < ∞</span>, so <span class='math'>{X^{(n)}}</span> is Cauchy in <span class='math'>L²</span>."},
+
+  {topic:"sde", tag:"Geometric BM — SDE",
+   q:"What SDE does geometric Brownian motion <span class='math'>X_t = e^{μt+σB_t}</span> satisfy?",
+   a:"Using Itô II with <span class='math'>f(t,x)=e^{ct+σx}</span>:<span class='block-math'>dX_t = (μ + ½σ²)X_t dt + σX_t dB_t</span>Or with <span class='math'>c∈ℝ, σ>0</span>: <span class='math'>dX_t = cX_t dt + σX_t dB_t</span>has solution <span class='math'>X_t = X_0 e^{(c-σ²/2)t + σB_t}</span>."},
+
+  {topic:"sde", tag:"Geometric BM — Ornstein-Uhlenbeck",
+   q:"State the Ornstein-Uhlenbeck SDE and its solution.",
+   a:"SDE: <span class='block-math'>dX_t = cX_t dt + σ dB_t,  X_0 = x_0</span>Solution via Itô III (integrating factor <span class='math'>e^{-ct}</span>):<span class='block-math'>X_t = e^{ct}x_0 + σe^{ct}∫₀ᵗ e^{-cs} dB_s</span>If <span class='math'>X_0 = x_0</span> (constant): <span class='math'>X_t ∼ N(e^{ct}x_0, σ²e^{2ct}·(1-e^{-2ct})/(2c))</span>. Covariance: <span class='math'>Cov(X_{t_1},X_{t_2}) = σ²/(2c)·(e^{c(t_1+t_2)}-e^{c(t_2-t_1)})</span>."},
+
+  {topic:"sde", tag:"Solution via Itô III — general linear SDE",
+   q:"For <span class='math'>dX_t=[a(t)X_t+b(t)]dt + σ(t)dB_t</span>, how do you find the solution using Itô III?",
+   a:"Define <span class='math'>A_t = ∫₀ᵗ a(s)ds</span>. Apply Itô III to <span class='math'>f(t,x) = e^{-A_t}x</span>:<span class='block-math'>d(e^{-A_t}X_t) = e^{-A_t}[b(t)dt + σ(t)dB_t]</span>Integrate to get:<span class='block-math'>X_t = e^{A_t}X_0 + e^{A_t}∫₀ᵗ e^{-A_s}b(s)ds + e^{A_t}∫₀ᵗ e^{-A_s}σ(s)dB_s</span>"},
+
+  {topic:"sde", tag:"SDE example: dX_t = X_t² dB_t",
+   q:"Solve <span class='math'>dX_t = X_t Y_t dB_t</span>, <span class='math'>X_0=1</span> (where <span class='math'>Y_t</span> is random, <span class='math'>∫E[Y_t²]dt<∞</span>). What general form does the solution have?",
+   a:"Solution satisfies <span class='block-math'>X_t = 1 + ∫₀ᵗ X_s Y_s dB_s</span>For the specific case <span class='math'>dX_t = X_t dB_t</span>, solution is <span class='math'>X_t = e^{B_t - t/2}</span>. For <span class='math'>dX_t = X_t³ dt + X_t² dB_t</span> (<span class='math'>X_0=1</span>): apply Itô III to <span class='math'>f(x)=1/x</span> → <span class='math'>X_t = 1/(1-B_t)</span>."},
+
+  {topic:"bs", tag:"Black-Scholes — market model",
+   q:"Describe the Black-Scholes market model. What SDEs do the stock and bond satisfy?",
+   a:"<span class='math'>S_t</span> = stock price (risky asset):<span class='block-math'>dS_t = μS_t dt + σS_t dB_t</span>Solution: <span class='math'>S_t = S_0 e^{(μ-σ²/2)t + σB_t}</span>. <span class='math'>β_t</span> = bond price (riskless):<span class='block-math'>dβ_t = rβ_t dt  →  β_t = β_0 e^{rt}</span>Parameters: <span class='math'>μ</span> = mean rate of return, <span class='math'>σ>0</span> = volatility, <span class='math'>r</span> = interest rate."},
+
+  {topic:"bs", tag:"Portfolio & self-financing",
+   q:"Define portfolio and self-financing condition in Black-Scholes.",
+   a:"A portfolio <span class='math'>(a_t, b_t)</span> holds <span class='math'>a_t</span> stocks and <span class='math'>b_t</span> bonds (both adapted to <span class='math'>𝒻_t = σ{B_s; s≤t}</span>). Portfolio value: <span class='block-math'>V_t = a_t S_t + b_t β_t</span>Self-financing: no external cash flows:<span class='block-math'>dV_t = a_t dS_t + b_t dβ_t</span>Equivalently: <span class='math'>V_t = V_0 + ∫₀ᵗ a_s dS_s + ∫₀ᵗ b_s dβ_s</span>."},
+
+  {topic:"bs", tag:"Discounted price process",
+   q:"Define the discounted stock price <span class='math'>S̃_t</span> and the SDE it satisfies.",
+   a:"Discounted stock price: <span class='block-math'>S̃_t = e^{-rt}S_t</span>Using Itô III with <span class='math'>f(t,x)=e^{-rt}x</span>:<span class='block-math'>dS̃_t = (μ-r)S̃_t dt + σS̃_t dB_t</span>Discounted portfolio value: <span class='math'>Ṽ_t = e^{-rt}V_t</span>. If self-financing:<span class='block-math'>dṼ_t = a_t dS̃_t</span>i.e. <span class='math'>Ṽ_t = V_0 + ∫₀ᵗ a_s dS̃_s</span>."},
+
+  {topic:"bs", tag:"Girsanov theorem",
+   q:"State the Girsanov theorem as used in Black-Scholes.",
+   a:"Let <span class='math'>Z_t = e^{-θB_t - ½θ²t}</span> where <span class='math'>θ∈ℝ</span>. Then:<br>(a) <span class='math'>(Z_t)</span> is a martingale w.r.t. <span class='math'>𝒻_t</span>.<br>(b) <span class='math'>B̃_t = B_t + θt</span> is a Brownian motion under the new measure <span class='math'>Q</span> defined by:<span class='block-math'>Q(A) = E[Z_T 1_A]  ∀A∈𝒻</span>Note: <span class='math'>Q(Ω) = E[Z_T] = 1</span> since <span class='math'>Z_T</span> is an m.g.f. of <span class='math'>N(0,T)</span>."},
+
+  {topic:"bs", tag:"Risk-neutral measure",
+   q:"What is the risk-neutral measure <span class='math'>Q</span> in Black-Scholes? What is <span class='math'>θ</span>?",
+   a:"Under <span class='math'>Q</span>, the discounted stock price <span class='math'>S̃_t</span> should be a martingale. Since <span class='block-math'>dS̃_t = (μ-r)S̃_t dt + σS̃_t dB_t = σS̃_t[((μ-r)/σ)dt + dB_t]</span>Set <span class='math'>θ = (μ-r)/σ</span> (market price of risk). Then <span class='math'>B̃_t = B_t + θt</span> is BM under <span class='math'>Q</span>, and:<span class='block-math'>dS̃_t = σS̃_t dB̃_t</span>so <span class='math'>S̃_t</span> is a martingale under <span class='math'>Q</span>."},
+
+  {topic:"bs", tag:"Black-Scholes model under Q",
+   q:"Under the risk-neutral measure <span class='math'>Q</span>, what SDE does <span class='math'>S_t</span> satisfy?",
+   a:"With <span class='math'>B̃_t = B_t + (μ-r)/σ · t</span> being BM under <span class='math'>Q</span>:<span class='block-math'>dS_t = rS_t dt + σS_t dB̃_t</span>This is called the <em>Black-Scholes model w.r.t. B̃</em>. Under <span class='math'>Q</span>, the stock grows at the <em>risk-free rate</em> <span class='math'>r</span> (not <span class='math'>μ</span>). Solution: <span class='math'>S_t = S_0 e^{(r-σ²/2)t + σB̃_t}</span>."},
+
+  {topic:"bs", tag:"Self-financing discounted value",
+   q:"Why does <span class='math'>dṼ_t = a_t dS̃_t</span> imply <span class='math'>(Ṽ_t)</span> is a martingale under <span class='math'>Q</span>?",
+   a:"Under <span class='math'>Q</span>, <span class='math'>dS̃_t = σS̃_t dB̃_t</span> (pure martingale, no drift). So:<span class='block-math'>Ṽ_t = V_0 + ∫₀ᵗ a_s σS̃_s dB̃_s</span>This is a stochastic integral w.r.t. <span class='math'>B̃_t</span> (BM under <span class='math'>Q</span>), hence a local martingale. Under suitable integrability, it is a true martingale. This is the key to no-arbitrage pricing."},
+
+  {topic:"bs", tag:"Black-Scholes — replicating portfolio",
+   q:"What is a replicating portfolio for a claim <span class='math'>H</span>, and how is it priced?",
+   a:"A self-financing portfolio <span class='math'>(a_t, b_t)</span> is replicating if <span class='math'>V_T = H</span> (matches the payoff at maturity). Since <span class='math'>Ṽ_t</span> is a martingale under <span class='math'>Q</span>:<span class='block-math'>V_t = e^{-r(T-t)} E^Q[H | 𝒻_t]</span>This is the no-arbitrage price of the claim <span class='math'>H</span> at time <span class='math'>t</span>."},
+];
+
+let deck = [...ALL];
+let idx = 0;
+let flipped = false;
+let known = new Set();
+let again = new Set();
+let topic = 'all';
+
+function setTopic(t) {
+  topic = t;
+  document.querySelectorAll('.topic-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (t === 'review') {
+    deck = ALL.filter(c => again.has(ALL.indexOf(c)));
+    if (deck.length === 0) { deck = [...ALL]; }
+  } else if (t === 'all') {
+    deck = [...ALL];
+  } else {
+    deck = ALL.filter(c => c.topic === t);
+  }
+  idx = 0;
+  flipped = false;
+  showCard();
+  updateStats();
+}
+
+function showCard() {
+  if (deck.length === 0) return;
+  const c = deck[idx];
+  document.getElementById('card-tag').textContent = c.tag;
+  document.getElementById('card-tag-b').textContent = c.tag;
+  document.getElementById('card-q').innerHTML = c.q;
+  document.getElementById('card-a').innerHTML = c.a;
+  document.getElementById('card').classList.remove('flipped');
+  document.getElementById('grade-row').style.display = 'none';
+  document.getElementById('counter').textContent = `${idx+1} / ${deck.length}`;
+  flipped = false;
+  document.getElementById('main-area').style.display = 'block';
+  document.getElementById('done-area').style.display = 'none';
+  updateProgress();
+}
+
+function flip() {
+  flipped = !flipped;
+  document.getElementById('card').classList.toggle('flipped', flipped);
+  if (flipped) document.getElementById('grade-row').style.display = 'flex';
+}
+
+function grade(g) {
+  const globalIdx = ALL.indexOf(deck[idx]);
+  if (g) { known.add(globalIdx); again.delete(globalIdx); }
+  else { again.add(globalIdx); known.delete(globalIdx); }
+  updateStats();
+  if (idx < deck.length - 1) { idx++; showCard(); }
+  else { showDone(); }
+}
+
+function next() {
+  if (idx < deck.length - 1) { idx++; } else { idx = 0; }
+  flipped = false;
+  showCard();
+}
+
+function prev() {
+  if (idx > 0) { idx--; } else { idx = deck.length - 1; }
+  flipped = false;
+  showCard();
+}
+
+function shuffle() {
+  for (let i = deck.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [deck[i],deck[j]] = [deck[j],deck[i]];
+  }
+  idx = 0;
+  showCard();
+}
+
+function updateStats() {
+  const total = ALL.length;
+  document.getElementById('chip-known').textContent = `✓ ${known.size} known`;
+  document.getElementById('chip-review').textContent = `↻ ${again.size} review`;
+  document.getElementById('chip-unseen').textContent = `— ${total - known.size - again.size} unseen`;
+}
+
+function updateProgress() {
+  const seen = new Set([...known, ...again]);
+  const pct = Math.round(seen.size / ALL.length * 100);
+  document.getElementById('prog').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = pct + '%';
+}
+
+function showDone() {
+  document.getElementById('main-area').style.display = 'none';
+  document.getElementById('done-area').style.display = 'block';
+  document.getElementById('done-msg').textContent =
+    `${known.size} known · ${again.size} flagged for review · ${ALL.length - known.size - again.size} unseen`;
+}
+
+function restart() {
+  deck = topic === 'all' ? [...ALL] : ALL.filter(c => c.topic === topic);
+  idx = 0;
+  showCard();
+}
+
+function reviewOnly() {
+  const reviewCards = ALL.filter((_, i) => again.has(i));
+  if (reviewCards.length === 0) { deck = [...ALL]; }
+  else { deck = reviewCards; }
+  idx = 0;
+  topic = 'review';
+  showCard();
+}
+
+showCard();
+updateStats();
+</script>
